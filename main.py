@@ -25,6 +25,7 @@ START_POSITIONS = {
 # Define car dimensions
 CAR_WIDTH, CAR_HEIGHT = 30, 15
 
+
 class TrafficSimulation(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -32,13 +33,10 @@ class TrafficSimulation(tk.Tk):
         self.canvas.pack()
         self.draw_intersection()
         self.cars = []  # Keep track of cars (threads) for cleanup
+        self.bind("<Key>", self.key_handler)  # Bind arrow keys to the key_handler method
 
     def start_simulation(self):
-        # Example of starting cars from each side
-        sides = ['left', 'right', 'top', 'bottom']
-        for side in sides:
-            self.add_car(side)
-            time.sleep(1)  # Delay between car spawns for visibility
+        pass
 
     def add_car(self, start_side):
         color = random.choice(COLORS)
@@ -78,9 +76,11 @@ class TrafficSimulation(tk.Tk):
         self.canvas.create_rectangle(0, 0, window_width, window_height, fill=GREEN, outline=GREEN)
 
         # Draw the vertical road
-        self.canvas.create_rectangle(window_width // 2 - 50, 0, window_width // 2 + 50, window_height, fill=GREY, outline=GREY)
+        self.canvas.create_rectangle(window_width // 2 - 50, 0, window_width // 2 + 50, window_height, fill=GREY,
+                                     outline=GREY)
         # Draw the horizontal road
-        self.canvas.create_rectangle(0, window_height // 2 - 50, window_width, window_height // 2 + 50, fill=GREY, outline=GREY)
+        self.canvas.create_rectangle(0, window_height // 2 - 50, window_width, window_height // 2 + 50, fill=GREY,
+                                     outline=GREY)
 
         # Draw the dashed lines in the vertical and horizontal roads
         for i in range(10, window_height, 40):
@@ -90,22 +90,36 @@ class TrafficSimulation(tk.Tk):
 
         # Draw the stop lines for the intersection
         # Horizontal stop lines
-        self.canvas.create_line(0, window_height // 2 - 50, window_width // 2 - 50, window_height // 2 - 50, fill=WHITE, width=5)
-        self.canvas.create_line(window_width // 2 + 50, window_height // 2 - 50, window_width, window_height // 2 - 50, fill=WHITE, width=5)
-        self.canvas.create_line(0, window_height // 2 + 50, window_width // 2 - 50, window_height // 2 + 50, fill=WHITE, width=5)
-        self.canvas.create_line(window_width // 2 + 50, window_height // 2 + 50, window_width, window_height // 2 + 50, fill=WHITE, width=5)
+        self.canvas.create_line(0, window_height // 2 - 50, window_width // 2 - 50, window_height // 2 - 50, fill=WHITE,
+                                width=5)
+        self.canvas.create_line(window_width // 2 + 50, window_height // 2 - 50, window_width, window_height // 2 - 50,
+                                fill=WHITE, width=5)
+        self.canvas.create_line(0, window_height // 2 + 50, window_width // 2 - 50, window_height // 2 + 50, fill=WHITE,
+                                width=5)
+        self.canvas.create_line(window_width // 2 + 50, window_height // 2 + 50, window_width, window_height // 2 + 50,
+                                fill=WHITE, width=5)
         # Vertical stop lines
-        self.canvas.create_line(window_width // 2 - 50, 0, window_width // 2 - 50, window_height // 2 - 50, fill=WHITE, width=5)
-        self.canvas.create_line(window_width // 2 - 50, window_height // 2 + 50, window_width // 2 - 50, window_height, fill=WHITE, width=5)
-        self.canvas.create_line(window_width // 2 + 50, 0, window_width // 2 + 50, window_height // 2 - 50, fill=WHITE, width=5)
-        self.canvas.create_line(window_width // 2 + 50, window_height // 2 + 50, window_width // 2 + 50, window_height, fill=WHITE, width=5)
+        self.canvas.create_line(window_width // 2 - 50, 0, window_width // 2 - 50, window_height // 2 - 50, fill=WHITE,
+                                width=5)
+        self.canvas.create_line(window_width // 2 - 50, window_height // 2 + 50, window_width // 2 - 50, window_height,
+                                fill=WHITE, width=5)
+        self.canvas.create_line(window_width // 2 + 50, 0, window_width // 2 + 50, window_height // 2 - 50, fill=WHITE,
+                                width=5)
+        self.canvas.create_line(window_width // 2 + 50, window_height // 2 + 50, window_width // 2 + 50, window_height,
+                                fill=WHITE, width=5)
+
+    def key_handler(self, event):
+        side_map = {'Up': 'top', 'Down': 'bottom', 'Left': 'left', 'Right': 'right'}
+        if event.keysym in side_map:
+            self.add_car(side_map[event.keysym])
+
 
 def main():
     app = TrafficSimulation()
     app.title("Traffic Simulation")
-    app.after(100, app.start_simulation)  # Start the simulation shortly after the app starts
+
     app.mainloop()
-    app.start_simulation()
+
 
 if __name__ == "__main__":
     main()
