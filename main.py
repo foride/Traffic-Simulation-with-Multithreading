@@ -68,17 +68,13 @@ class TrafficSimulation(tk.Tk):
             self.toggle_semaphore(self.semaphore_right, 'right')
 
     def toggle_semaphore(self, semaphore, direction):
-        acquired = semaphore.acquire(blocking=False)
-        if acquired:
-            # If acquiring succeeded, the semaphore was "green"; turn it to "red"
-            color = "red"
-            semaphore.release()
-        else:
-            # If acquiring failed, the semaphore was "red"; turn it to "green"
-            semaphore.release()  # This will increase its value, effectively making it "green"
+        if semaphore._value == 0:  # If the semaphore is "red"
+            semaphore.release()  # Change to "green"
             color = "green"
-
-        # Schedule the GUI update on the main thread
+        else:
+            semaphore.acquire(False)  # Change to "red", non-blocking acquire
+            color = "red"
+            # Schedule the GUI update on the main thread
         self.after(0, lambda: self.canvas.itemconfig(self.traffic_light_drawings[direction], fill=color))
 
     def add_car(self, start_side):
