@@ -48,15 +48,12 @@ class TrafficSimulation(tk.Tk):
             'top': self.canvas.create_oval(window_width // 2 + 55, 10, window_width // 2 + 85, 40, fill="green"),
             'bottom': self.canvas.create_oval(window_width // 2 - 85, window_height - 40, window_width // 2 - 55,
                                               window_height - 10, fill="green"),
-            # Adjusting left traffic light to appear on the left side of the road
+
             'left': self.canvas.create_oval(10, window_height // 2 - 85, 40, window_height // 2 - 55, fill="red"),
-            # Adjusting right traffic light to appear on the right side of the road
+
             'right': self.canvas.create_oval(window_width - 40, window_height // 2 + 55, window_width - 10,
                                              window_height // 2 + 85, fill="red"),
         }
-
-    def start_simulation(self):
-        pass
 
     def change_traffic_lights(self):
         while not self.stop_event.is_set():
