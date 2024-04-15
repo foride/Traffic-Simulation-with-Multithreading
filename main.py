@@ -1,5 +1,5 @@
 import tkinter as tk
-from threading import Thread, Event
+from threading import Thread, Event, Lock
 from threading import Semaphore
 import random
 import time
@@ -33,7 +33,8 @@ class TrafficSimulation(tk.Tk):
         self.canvas = tk.Canvas(self, width=window_width, height=window_height)
         self.canvas.pack()
         self.draw_intersection()
-        self.cars = []  # Keep track of cars (threads) for cleanup
+        self.intersection_crossed_counter = 0
+        self.counter_lock = Lock()
         self.bind("<Key>", self.key_handler)  # Bind arrow keys to the key_handler method
         self.stop_event = Event()
         self.semaphore_top = Semaphore(1)  # Initially green
@@ -58,6 +59,7 @@ class TrafficSimulation(tk.Tk):
     def change_traffic_lights(self):
         while not self.stop_event.is_set():
             time.sleep(5)  # Change lights every 5 seconds
+            print(f'{self.intersection_crossed_counter} cars has crossed the intersection')
             # Toggle the state of each traffic light
             self.toggle_semaphore(self.semaphore_top, 'top')
             self.toggle_semaphore(self.semaphore_bottom, 'bottom')
@@ -102,7 +104,6 @@ class TrafficSimulation(tk.Tk):
 
         car_thread = Thread(target=move_func)
         car_thread.start()
-        self.cars.append(car_thread)
 
     def move_car(self, car, dx, dy, start_side):
 
@@ -140,6 +141,8 @@ class TrafficSimulation(tk.Tk):
 
             # Check if car has exited the screen, and stop the thread if it has
             if pos[2] < 0 or pos[0] > window_width or pos[3] < 0 or pos[1] > window_height:
+                with self.counter_lock:
+                    self.intersection_crossed_counter += 1
                 break
             time.sleep(0.01)
 
