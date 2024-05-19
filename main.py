@@ -45,6 +45,10 @@ class TrafficSimulation(tk.Tk):
         self.traffic_light_thread = Thread(target=self.change_traffic_lights)
         self.traffic_light_thread.start()
 
+        self.cars = {'left': [], 'right': [], 'top': [], 'bottom': []}  # Cars by direction
+
+
+
         self.traffic_light_drawings = {
             'top': self.canvas.create_oval(window_width // 2 + 55, 10, window_width // 2 + 85, 40, fill="green"),
             'bottom': self.canvas.create_oval(window_width // 2 - 85, window_height - 40, window_width // 2 - 55,
@@ -79,72 +83,100 @@ class TrafficSimulation(tk.Tk):
     def add_car(self, start_side):
         color = random.choice(COLORS)
 
-        if start_side == 'left':
-            x, y = START_POSITIONS[start_side]
+        x, y = START_POSITIONS[start_side]
+        orientation = 'horizontal' if start_side in ['left', 'right'] else 'vertical'
+        if orientation == 'horizontal':
             car = self.canvas.create_rectangle(x, y, x + CAR_WIDTH, y + CAR_HEIGHT, fill=color)
-            dx, dy = 5, 0
-        elif start_side == 'right':
-            x, y = START_POSITIONS[start_side]
-            car = self.canvas.create_rectangle(x, y, x - CAR_WIDTH, y + CAR_HEIGHT, fill=color)
-            dx, dy = -5, 0
-        elif start_side == 'top':
-            x, y = START_POSITIONS[start_side]
-            car = self.canvas.create_rectangle(x, y, x + CAR_HEIGHT, y + CAR_WIDTH, fill=color)
-            dx, dy = 0, 5
-        elif start_side == 'bottom':
-            x, y = START_POSITIONS[start_side]
-            car = self.canvas.create_rectangle(x, y, x + CAR_HEIGHT, y - CAR_WIDTH, fill=color)
-            dx, dy = 0, -5
+            dx, dy = (5 if start_side == 'left' else -5), 0
         else:
-            print(f"Unexpected start_side: {start_side}")
-            return  # Exit the function if start_side is not recognized
+            car = self.canvas.create_rectangle(x, y, x + CAR_HEIGHT, y + CAR_WIDTH, fill=color)
+            dx, dy = 0, (5 if start_side == 'top' else -5)
 
         def move_func():
-            self.move_car(car, dx, dy, start_side)
+            self.cars[start_side].append(car)  # Store reference to car
+            self.move_car(car, dx, dy, start_side, orientation)
 
         car_thread = Thread(target=move_func)
         car_thread.start()
 
-    def move_car(self, car, dx, dy, start_side):
-
+    def move_car(self, car, dx, dy, start_side, orientation):
         semaphore = self.get_semaphore_for_side(start_side)
         approaching_intersection = False
+        has_decided = False  # Flag to ensure the decision is made only once
 
         while not self.stop_event.is_set():
+            self.check_collision_and_move(car, dx, dy, start_side)
             pos = self.canvas.coords(car)
 
-            if start_side == 'top' and not approaching_intersection:
-                if pos[3] > window_height // 2 - 60:
-                    approaching_intersection = True
-                    semaphore.acquire()
-                    semaphore.release()
-            elif start_side == 'bottom' and not approaching_intersection:
-                if pos[1] < window_height // 2 + 60:
-                    approaching_intersection = True
-                    semaphore.acquire()
-                    semaphore.release()
-            elif start_side == 'left' and not approaching_intersection:
-                if pos[2] > window_width // 2 - 60:
-                    approaching_intersection = True
-                    semaphore.acquire()
-                    semaphore.release()
-            elif start_side == 'right' and not approaching_intersection:
-                if pos[0] < window_width // 2 + 60:
-                    approaching_intersection = True
-                    semaphore.acquire()
-                    semaphore.release()
+            # Check if the car is near the intersection
+            if not approaching_intersection and (
+                    (start_side == 'top' and pos[3] > window_height // 2 - 60) or
+                    (start_side == 'bottom' and pos[1] < window_height // 2 + 60) or
+                    (start_side == 'left' and pos[2] > window_width // 2 - 60) or
+                    (start_side == 'right' and pos[0] < window_width // 2 + 60)
+            ):
+                approaching_intersection = True
+                semaphore.acquire()
+                semaphore.release()
+
+            if approaching_intersection and (
+                    (start_side == 'top' and pos[3] > window_height // 2 - 10) or
+                    (start_side == 'bottom' and pos[1] < window_height // 2 + 10) or
+                    (start_side == 'left' and pos[2] > window_width // 2 - 10) or
+                    (start_side == 'right' and pos[0] < window_width // 2 + 10)
+            ):
+                if not has_decided:
+                    decision = random.choice(['straight', 'left', 'right'])
+
+                    if decision == 'left':
+                        dx, dy = -dy, dx
+                        orientation = 'horizontal' if orientation == 'vertical' else 'vertical'
+                        self.update_car_orientation(car, orientation, pos)
+                    elif decision == 'right':
+                        dx, dy = dy, -dx
+                        orientation = 'horizontal' if orientation == 'vertical' else 'vertical'
+                        self.update_car_orientation(car, orientation, pos)
+
+                    has_decided = True
 
             # Car movement logic
             self.canvas.move(car, dx, dy)
             self.canvas.update()
             pos = self.canvas.coords(car)
 
-            # Check if car has exited the screen, and stop the thread if it has
+            # Check if the car has exited the screen, and stop the thread if it has
             if pos[2] < 0 or pos[0] > window_width or pos[3] < 0 or pos[1] > window_height:
                 with self.counter_lock:
                     self.intersection_crossed_counter += 1
-                break
+                    self.cars[start_side].remove(car)
             time.sleep(0.01)
+
+    def check_collision_and_move(self, car, dx, dy, start_side):
+        idx = self.cars[start_side].index(car)
+        if idx > 0:  # Check if there is a car in front
+            prev_car = self.cars[start_side][idx - 1]
+            index = 0
+            while True:
+                my_pos = self.canvas.coords(car)
+                prev_pos = self.canvas.coords(prev_car)
+
+                if self.calculate_distance(my_pos, prev_pos) < 45:
+                    time.sleep(0.01)  # Halt for a second if too close
+                    index += 1
+                    if index > 400:
+                        break
+                    continue
+                break
+        self.canvas.move(car, dx, dy)
+
+    def calculate_distance(self, pos1, pos2):
+        return abs(pos1[0] - pos2[0]) if pos1[0] != pos2[0] else abs(pos1[1] - pos2[1])
+
+    def update_car_orientation(self, car, orientation, pos):
+        if orientation == 'horizontal':
+            self.canvas.coords(car, pos[0], pos[1], pos[0] + CAR_WIDTH, pos[1] + CAR_HEIGHT)
+        else:
+            self.canvas.coords(car, pos[0], pos[1], pos[0] + CAR_HEIGHT, pos[1] + CAR_WIDTH)
 
     def get_semaphore_for_side(self, start_side):
         if start_side == 'top':
