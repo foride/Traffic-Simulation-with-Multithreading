@@ -34,6 +34,7 @@ class TrafficSimulation(tk.Tk):
         self.canvas.pack()
         self.draw_intersection()
         self.intersection_crossed_counter = 0
+        self.car_speed_range = (4, 10)
         self.counter_lock = Lock()
         self.bind("<Key>", self.key_handler)  # Bind arrow keys to the key_handler method
         self.stop_event = Event()
@@ -46,8 +47,6 @@ class TrafficSimulation(tk.Tk):
         self.traffic_light_thread.start()
 
         self.cars = {'left': [], 'right': [], 'top': [], 'bottom': []}  # Cars by direction
-
-
 
         self.traffic_light_drawings = {
             'top': self.canvas.create_oval(window_width // 2 + 55, 10, window_width // 2 + 85, 40, fill="green"),
@@ -103,6 +102,7 @@ class TrafficSimulation(tk.Tk):
         semaphore = self.get_semaphore_for_side(start_side)
         approaching_intersection = False
         has_decided = False  # Flag to ensure the decision is made only once
+        speed = random.uniform(*self.car_speed_range)
 
         while not self.stop_event.is_set():
             self.check_collision_and_move(car, dx, dy, start_side)
@@ -126,20 +126,19 @@ class TrafficSimulation(tk.Tk):
                     (start_side == 'right' and pos[0] < window_width // 2 + 10)
             ):
                 if not has_decided:
-                    decision = random.choice(['straight', 'left', 'right'])
+                    decision = random.choice(['straight', 'right'])
 
-                    if decision == 'left':
+                    if decision == 'right':
+
                         dx, dy = -dy, dx
-                        orientation = 'horizontal' if orientation == 'vertical' else 'vertical'
-                        self.update_car_orientation(car, orientation, pos)
-                    elif decision == 'right':
-                        dx, dy = dy, -dx
                         orientation = 'horizontal' if orientation == 'vertical' else 'vertical'
                         self.update_car_orientation(car, orientation, pos)
 
                     has_decided = True
 
             # Car movement logic
+
+            move_interval = max(0.01, 0.1 - (speed * 0.01))
             self.canvas.move(car, dx, dy)
             self.canvas.update()
             pos = self.canvas.coords(car)
@@ -149,7 +148,7 @@ class TrafficSimulation(tk.Tk):
                 with self.counter_lock:
                     self.intersection_crossed_counter += 1
                     self.cars[start_side].remove(car)
-            time.sleep(0.01)
+            time.sleep(move_interval)
 
     def check_collision_and_move(self, car, dx, dy, start_side):
         idx = self.cars[start_side].index(car)
