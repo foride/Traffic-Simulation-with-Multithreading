@@ -145,28 +145,37 @@ class TrafficSimulation(tk.Tk):
 
             # Check if the car has exited the screen, and stop the thread if it has
             if pos[2] < 0 or pos[0] > window_width or pos[3] < 0 or pos[1] > window_height:
-                with self.counter_lock:
-                    self.intersection_crossed_counter += 1
-                    self.cars[start_side].remove(car)
+                try:
+                    with self.counter_lock:
+                        self.intersection_crossed_counter += 1
+                    self.cars[start_side].remove(car)  # Try to remove car
+                except ValueError:
+                    print(f"Attempted to remove a car not in the list on side {start_side}.")
+                break
             time.sleep(move_interval)
 
     def check_collision_and_move(self, car, dx, dy, start_side):
-        idx = self.cars[start_side].index(car)
-        if idx > 0:  # Check if there is a car in front
-            prev_car = self.cars[start_side][idx - 1]
-            index = 0
-            while True:
-                my_pos = self.canvas.coords(car)
-                prev_pos = self.canvas.coords(prev_car)
+        try:
+            idx = self.cars[start_side].index(car)
+            if idx > 0:  # Check if there is a car in front
+                prev_car = self.cars[start_side][idx - 1]
+                index = 0
+                while True:
+                    my_pos = self.canvas.coords(car)
+                    prev_pos = self.canvas.coords(prev_car)
 
-                if self.calculate_distance(my_pos, prev_pos) < 45:
-                    time.sleep(0.01)  # Halt for a second if too close
-                    index += 1
-                    if index > 400:
-                        break
-                    continue
-                break
-        self.canvas.move(car, dx, dy)
+                    if self.calculate_distance(my_pos, prev_pos) < 45:
+                        time.sleep(0.01)  # Halt if too close
+                        index += 1
+                        if index > 400:
+                            break
+                        continue
+                    break
+            self.canvas.move(car, dx, dy)
+        except ValueError as e:
+            print(f"{e}")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
 
     def calculate_distance(self, pos1, pos2):
         return abs(pos1[0] - pos2[0]) if pos1[0] != pos2[0] else abs(pos1[1] - pos2[1])

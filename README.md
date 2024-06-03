@@ -11,30 +11,39 @@ This Python-based project uses Tkinter to simulate traffic at an intersection, d
 - **Semaphore Synchronization**: Employs semaphores to manage the flow of traffic through the intersection effectively. This ensures that traffic lights coordinate smoothly, preventing gridlock and enhancing safety.
 - **Dynamic User Interaction**: Allows users to spawn cars in real-time by pressing arrow keys, simulating incoming traffic from different directions.
 - **Safe Application Termination**: Provides a safe shutdown process by capturing the "Q" key event, ensuring all threads are gracefully stopped before the application exits to prevent data corruption or application crashes.
-- **Collision Avoidance**: Uses a sophisticated non-blocking collision detection system to maintain a safe distance between cars, thereby preventing accidents.
+- **Collision Avoidance**: Uses a non-blocking collision detection system to maintain a safe distance between cars, thereby preventing accidents.
 - **Dynamic Car Orientation**: Supports random directional changes at intersections, with visual representation reflecting the car's new travel direction.
 
 ## Detailed Thread and Synchronization Mechanism Description
 
 ### Main Window Thread
 
-- **Responsibilities**: Manages the drawing of the user interface and processes user input events. It also updates the GUI components to reflect the current state of the simulation.
-- **Critical Operations**: Handling event queue processing and GUI updates.
+- Responsible for drawing the interface.
+- Processing events from the event queue.
+- Updating the graphical components.
 
 ### Car Threads
 
-- **Functionality**: Each car thread simulates the movement of an individual car. It calculates the car's position, checks semaphore status to observe traffic light rules, handles collision detection, and redraws the car in its new position and orientation after maneuvers.
-- **Synchronization**: Car threads interact with semaphores to check whether they can proceed through an intersection or must wait for the light to change.
+- Calculating positions.
+- Checking semaphore status (traffic lights).
+- Handling collision detection and avoidance.
+- Redrawing the car in its new position with appropriate orientation after turns.
 
 ### Traffic Light Thread
 
-- **Operation**: This thread periodically toggles the state of the traffic lights from green to red and vice versa, which directly affects the flow of traffic through semaphores.
-- **Impact**: Dictates when car threads are allowed to move through the intersection or must stop due to a red light.
+- Regularly toggles the state of the traffic lights from green to red and vice versa.
+- Allows or prevents car threads from proceeding through the intersection based on semaphore state.
 
-## Critical Section Management
+### Semaphore Implementation and Usage
 
-### Protected Variable: `intersection_crossed_counter`
+- **Semaphores** are used to control the traffic lights, which in turn regulate the flow of cars through the intersection. Each direction (top, bottom, left, right) has a corresponding semaphore that signals whether cars can proceed or must wait.
+    - `semaphore_top` and `semaphore_bottom`: These semaphores are initialized to 1 (green light) to allow traffic flow from top to bottom or vice versa at the start of the simulation.
+    - `semaphore_left` and `semaphore_right`: These are initialized to 0 (red light) preventing traffic from flowing left to right or vice versa initially.
+- **Semaphore Usage**:
+    - **Checking before entering the intersection**: When a car approaches the intersection, it needs to acquire the semaphore. If the semaphore is green (_value is 1), the semaphore is acquired (decremented to 0), allowing the car to proceed. After passing the intersection, the semaphore is released (incremented back to 1), signaling that another car can proceed.
+    - **Traffic light switching**: The `change_traffic_lights` method toggles each semaphore state regularly, simulating the traffic light change from red to green and vice versa. This controls when cars are allowed to proceed.
 
-- **Usage**: This variable counts each car that successfully crosses the intersection. It is accessed and modified by multiple car threads.
-- **Lock Mechanism**: A mutex lock (`Lock`) protects this variable, ensuring that updates are atomic and no data races occur.
+### Mutex (Lock)
 
+- **Mutex Usage**:
+    - **Incrementing the car counter**: When a car leaves the screen, it is removed from its list, and the `intersection_crossed_counter` is incremented. The lock (`counter_lock`) ensures that this increment operation does not conflict with other threads trying to do the same, thus maintaining the integrity of the data.
